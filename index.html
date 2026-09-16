@@ -71,7 +71,8 @@
   table.matrix th { background: var(--gray-light); font-size: 11.5px; position: sticky; top: 0; }
   table.matrix .date-cell { font-weight: 700; white-space: nowrap; background: #fafafa; min-width: 60px; }
   table.matrix .date-cell.weekend { color: var(--red); }
-  .shift-chip { display: block; border-radius: 6px; padding: 2px 6px; margin-bottom: 2px; font-size: 11px; cursor: pointer; }
+  .shift-chip { display: block; border-radius: 6px; padding: 3px 6px; margin-bottom: 2px; font-size: 11px; cursor: pointer; line-height: 1.35; }
+  .shift-chip .chip-time { display: block; font-size: 9.5px; opacity: 0.75; }
   .shift-chip.normal { background: var(--blue-light); color: var(--blue); }
   .shift-chip.swapped { background: var(--orange-light); color: var(--orange); }
   .shift-chip.sick { background: var(--red-light); color: var(--red); }
@@ -410,12 +411,26 @@ function hoursOf(start, end, breakMin) {
   return Math.max(0, mins / 60);
 }
 
+async function loadAllShifts() {
+  const pageSize = 1000;
+  let from = 0;
+  let all = [];
+  while (true) {
+    const { data, error } = await sb.from('shifts').select('*').range(from, from + pageSize - 1);
+    if (error) { showToast('โหลดกะงานล้มเหลว'); break; }
+    all = all.concat(data || []);
+    if (!data || data.length < pageSize) break;
+    from += pageSize;
+  }
+  return all;
+}
+
 async function loadAll() {
-  const [{ data: pd }, { data: sd }, { data: spd }, { data: sh }, { data: st }] = await Promise.all([
+  const [{ data: pd }, { data: sd }, { data: spd }, sh, { data: st }] = await Promise.all([
     sb.from('pages').select('*').order('name'),
     sb.from('staff').select('*').order('name'),
     sb.from('staff_pages').select('*'),
-    sb.from('shifts').select('*'),
+    loadAllShifts(),
     sb.from('app_settings').select('*').eq('id', 1).maybeSingle()
   ]);
   pages = pd || []; staff = sd || []; staffPages = spd || []; shifts = sh || [];
@@ -544,10 +559,12 @@ function renderMatrix() {
     html += `<tr><td class="date-cell ${isWeekend ? 'weekend' : ''}">${d} ${THAI_DOW[dow]}</td>`;
 
     activePages.forEach(p => {
-      const cellShifts = shifts.filter(s => s.work_date === ds && s.page_id === p.id && s.status !== 'off');
+      const cellShifts = shifts.filter(s => s.work_date === ds && s.page_id === p.id && s.status !== 'off')
+        .sort((a, b) => (a.start_time || '').localeCompare(b.start_time || ''));
       html += '<td>';
       cellShifts.forEach(s => {
-        html += `<span class="shift-chip ${s.status}" onclick="openShiftModal('${s.id}')">${escapeHtml(staffName(s.staff_id))}</span>`;
+        const timeLabel = (s.start_time && s.end_time) ? `<span class="chip-time">${fmtTime(s.start_time)}-${fmtTime(s.end_time)}</span>` : '';
+        html += `<span class="shift-chip ${s.status}" onclick="openShiftModal('${s.id}')">${escapeHtml(staffName(s.staff_id))}${timeLabel}</span>`;
       });
       if (canEditNow()) html += `<span class="add-cell-btn" onclick="openShiftModal(null, '${ds}', '${p.id}')">+</span>`;
       html += '</td>';
