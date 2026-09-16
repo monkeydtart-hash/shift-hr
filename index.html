@@ -97,7 +97,10 @@
   .off-chip.conflict { background: var(--red-light); color: var(--red); font-weight: 700; }
   .conflict-banner { background: var(--red-light); color: var(--red); border-radius: 10px; padding: 10px 14px; margin-bottom: 14px; font-size: 13px; }
 
-  .table-wrap { overflow-x: auto; }
+  .table-wrap { overflow: auto; max-height: 68vh; border-radius: 10px; }
+  .scroll-arrows { display: flex; gap: 6px; }
+  .scroll-arrow-btn { border: 1px solid var(--border); background: white; border-radius: 8px; width: 34px; height: 34px; cursor: pointer; font-size: 15px; font-weight: 700; color: var(--teal); }
+  .scroll-arrow-btn:active { background: var(--teal-light); }
   table.simple { border-collapse: collapse; width: 100%; font-size: 13.5px; }
   table.simple th, table.simple td { border-bottom: 1px solid var(--border); padding: 8px 10px; text-align: left; }
   table.simple th { color: var(--text-muted); font-size: 12px; font-weight: 600; }
@@ -187,7 +190,13 @@
     </div>
     <div id="conflict-banner-area"></div>
     <div class="card">
-      <div class="chip-row" id="sup-jump-bar" style="margin-bottom:12px"></div>
+      <div class="row-between" style="margin-bottom:12px">
+        <div class="chip-row" id="sup-jump-bar"></div>
+        <div class="scroll-arrows">
+          <button class="scroll-arrow-btn" onclick="scrollMatrixBy(-1)">◀</button>
+          <button class="scroll-arrow-btn" onclick="scrollMatrixBy(1)">▶</button>
+        </div>
+      </div>
       <div class="table-wrap" id="matrix-scroll-wrap">
         <table class="matrix" id="matrix-table"></table>
       </div>
@@ -654,6 +663,11 @@ function jumpToSupervisor(groupIndex, chipEl) {
   if (groupIndex === -1) { wrap.scrollLeft = 0; return; }
   const th = document.querySelector(`th[data-sup-group="${groupIndex}"]`);
   if (th) wrap.scrollLeft = th.offsetLeft - 64;
+}
+
+function scrollMatrixBy(direction) {
+  const wrap = document.getElementById('matrix-scroll-wrap');
+  wrap.scrollBy({ left: direction * 420, behavior: 'smooth' });
 }
 
 function fmtDateShort(ds) {
