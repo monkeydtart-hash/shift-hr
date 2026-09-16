@@ -66,11 +66,24 @@
   .btn-sm { padding: 4px 10px; font-size: 12px; }
   .btn-danger { background: var(--red-light); color: var(--red); }
 
-  table.matrix { border-collapse: collapse; width: 100%; font-size: 12.5px; }
-  table.matrix th, table.matrix td { border: 1px solid var(--border); padding: 4px; vertical-align: top; }
-  table.matrix th { background: var(--gray-light); font-size: 11.5px; position: sticky; top: 0; }
-  table.matrix .date-cell { font-weight: 700; white-space: nowrap; background: #fafafa; min-width: 60px; }
+  table.matrix { border-collapse: separate; border-spacing: 0; font-size: 12.5px; table-layout: fixed; }
+  table.matrix th, table.matrix td { border: 1px solid var(--border); padding: 5px; vertical-align: top; overflow: hidden; }
+  table.matrix th { background: var(--gray-light); font-size: 11.5px; position: sticky; top: 0; z-index: 3; }
+  table.matrix th.page-th { cursor: help; position: sticky; top: 33px; z-index: 3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  table.matrix th.sup-th { position: sticky; top: 0; z-index: 4; text-align: center; font-weight: 700; }
+  table.matrix th.sup-th.tint-a { background: #ccfbf1; }
+  table.matrix th.sup-th.tint-b { background: #e0e7ff; }
+  table.matrix td.tint-a { background: #f0fdfa; }
+  table.matrix td.tint-b { background: #eef2ff; }
+  table.matrix .date-cell { font-weight: 700; white-space: nowrap; background: #fafafa; min-width: 64px; max-width: 64px; position: sticky; left: 0; z-index: 2; }
+  table.matrix th.date-th { position: sticky; left: 0; top: 0; z-index: 5; min-width: 64px; max-width: 64px; }
   table.matrix .date-cell.weekend { color: var(--red); }
+  .page-filter-bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
+  .page-filter-popover { position: relative; display: inline-block; }
+  .page-filter-list { display: none; position: absolute; top: 36px; left: 0; background: white; border: 1px solid var(--border); border-radius: 10px; box-shadow: 0 4px 16px rgba(0,0,0,0.12); padding: 10px; max-height: 340px; overflow-y: auto; width: 260px; z-index: 50; }
+  .page-filter-list.open { display: block; }
+  .page-filter-list label { display: flex; align-items: center; gap: 6px; font-size: 13px; padding: 4px 2px; cursor: pointer; }
+  .page-filter-actions { display: flex; gap: 8px; margin-bottom: 8px; }
   .shift-chip { display: block; border-radius: 6px; padding: 3px 6px; margin-bottom: 2px; font-size: 11px; cursor: pointer; line-height: 1.35; }
   .shift-chip .chip-time { display: block; font-size: 9.5px; opacity: 0.75; }
   .shift-chip.normal { background: var(--blue-light); color: var(--blue); }
@@ -321,6 +334,7 @@
     <h2 id="page-modal-title">เพิ่มเพจ</h2>
     <input type="hidden" id="page-id">
     <div class="form-group"><label>ชื่อเพจ</label><input type="text" id="page-name"></div>
+    <div class="form-group"><label>หัวหน้าเพจ (ซุป)</label><input type="text" id="page-supervisor" placeholder="เช่น อีฟ"></div>
     <div class="form-row">
       <div class="form-group"><label>เวลาเข้า default</label><input type="time" id="page-start"></div>
       <div class="form-group"><label>เวลาออก default</label><input type="time" id="page-end"></div>
@@ -534,9 +548,27 @@ function matrixPrevMonth() { matrixMonth--; if (matrixMonth < 0) { matrixMonth =
 function matrixNextMonth() { matrixMonth++; if (matrixMonth > 11) { matrixMonth = 0; matrixYear++; } renderMatrix(); }
 function matrixGoToday() { matrixYear = today.getFullYear(); matrixMonth = today.getMonth(); renderMatrix(); }
 
+function truncatePageName(name, max) {
+  if (name.length <= max) return name;
+  return name.slice(0, max - 1) + '…';
+}
+
+function groupPagesBySupervisor(pageList) {
+  const groups = {};
+  const order = [];
+  pageList.forEach(p => {
+    const sup = p.supervisor_name || 'ไม่ระบุหัวหน้า';
+    if (!groups[sup]) { groups[sup] = []; order.push(sup); }
+    groups[sup].push(p);
+  });
+  return order.map(sup => ({ supervisor: sup, pages: groups[sup] }));
+}
+
 function renderMatrix() {
   document.getElementById('matrix-month-label').textContent = `${THAI_MONTHS[matrixMonth]} ${matrixYear + 543}`;
   const activePages = pages.filter(p => p.active);
+  const groups = groupPagesBySupervisor(activePages);
+  const orderedPages = groups.flatMap(g => g.pages);
   const daysInMonth = new Date(matrixYear, matrixMonth + 1, 0).getDate();
   const conflicts = findConflicts(matrixYear, matrixMonth);
 
@@ -548,9 +580,28 @@ function renderMatrix() {
     bannerArea.innerHTML = '';
   }
 
-  let html = '<thead><tr><th class="date-cell">วันที่</th>';
-  activePages.forEach(p => html += `<th>${escapeHtml(p.name)}</th>`);
-  html += '<th>หยุด</th></tr></thead><tbody>';
+  const tintByPageId = {};
+  groups.forEach((g, gi) => {
+    const tint = gi % 2 === 0 ? 'tint-a' : 'tint-b';
+    g.pages.forEach(p => { tintByPageId[p.id] = tint; });
+  });
+
+  let html = '<colgroup>';
+  html += '<col style="width:64px">';
+  orderedPages.forEach(() => html += '<col style="width:140px">');
+  html += '<col style="width:110px">';
+  html += '</colgroup>';
+  html += '<thead>';
+  html += '<tr><th class="date-th" rowspan="2">วันที่</th>';
+  groups.forEach((g, gi) => {
+    const tint = gi % 2 === 0 ? 'tint-a' : 'tint-b';
+    html += `<th colspan="${g.pages.length}" class="sup-th ${tint}">👤 ${escapeHtml(g.supervisor)}</th>`;
+  });
+  html += '<th rowspan="2">หยุด</th></tr>';
+  html += '<tr>';
+  orderedPages.forEach(p => html += `<th class="page-th ${tintByPageId[p.id]}" title="${escapeHtml(p.name)}">${escapeHtml(truncatePageName(p.name, 20))}</th>`);
+  html += '</tr>';
+  html += '</thead><tbody>';
 
   for (let d = 1; d <= daysInMonth; d++) {
     const ds = dateStr(matrixYear, matrixMonth, d);
@@ -558,10 +609,10 @@ function renderMatrix() {
     const isWeekend = dow === 0 || dow === 6;
     html += `<tr><td class="date-cell ${isWeekend ? 'weekend' : ''}">${d} ${THAI_DOW[dow]}</td>`;
 
-    activePages.forEach(p => {
+    orderedPages.forEach(p => {
       const cellShifts = shifts.filter(s => s.work_date === ds && s.page_id === p.id && s.status !== 'off')
         .sort((a, b) => (a.start_time || '').localeCompare(b.start_time || ''));
-      html += '<td>';
+      html += `<td class="${tintByPageId[p.id]}">`;
       cellShifts.forEach(s => {
         const timeLabel = (s.start_time && s.end_time) ? `<span class="chip-time">${fmtTime(s.start_time)}-${fmtTime(s.end_time)}</span>` : '';
         html += `<span class="shift-chip ${s.status}" onclick="openShiftModal('${s.id}')">${escapeHtml(staffName(s.staff_id))}${timeLabel}</span>`;
@@ -860,7 +911,7 @@ function renderAdmin() {
 
   document.getElementById('admin-pages-list').innerHTML = pages.length ? pages.map(p => `
     <div class="page-list-item">
-      <div><b>${escapeHtml(p.name)}</b> <span style="color:var(--text-muted);font-size:12.5px">${fmtTime(p.default_start)}-${fmtTime(p.default_end)} พัก ${p.default_break_minutes} นาที</span> ${p.active ? '' : '<span class="badge off">ปิดใช้งาน</span>'}</div>
+      <div><b>${escapeHtml(p.name)}</b> ${p.supervisor_name ? `<span class="badge on">👤 ${escapeHtml(p.supervisor_name)}</span>` : ''} <span style="color:var(--text-muted);font-size:12.5px">${fmtTime(p.default_start)}-${fmtTime(p.default_end)} พัก ${p.default_break_minutes} นาที</span> ${p.active ? '' : '<span class="badge off">ปิดใช้งาน</span>'}</div>
       <button class="btn btn-secondary btn-sm" onclick="openPageModal('${p.id}')">แก้ไข</button>
     </div>
   `).join('') : '<div class="empty-state">ยังไม่มีเพจ</div>';
@@ -881,12 +932,14 @@ function openPageModal(id) {
     const p = pages.find(x => x.id === id);
     document.getElementById('page-modal-title').textContent = 'แก้ไขเพจ';
     document.getElementById('page-name').value = p.name;
+    document.getElementById('page-supervisor').value = p.supervisor_name || '';
     document.getElementById('page-start').value = fmtTime(p.default_start);
     document.getElementById('page-end').value = fmtTime(p.default_end);
     document.getElementById('page-break').value = p.default_break_minutes;
   } else {
     document.getElementById('page-modal-title').textContent = 'เพิ่มเพจ';
     document.getElementById('page-name').value = '';
+    document.getElementById('page-supervisor').value = '';
     document.getElementById('page-start').value = '';
     document.getElementById('page-end').value = '';
     document.getElementById('page-break').value = 0;
@@ -897,6 +950,7 @@ async function savePage() {
   const id = document.getElementById('page-id').value;
   const payload = {
     name: document.getElementById('page-name').value.trim(),
+    supervisor_name: document.getElementById('page-supervisor').value.trim() || null,
     default_start: document.getElementById('page-start').value || null,
     default_end: document.getElementById('page-end').value || null,
     default_break_minutes: parseInt(document.getElementById('page-break').value) || 0
