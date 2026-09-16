@@ -97,7 +97,8 @@
   .off-chip.conflict { background: var(--red-light); color: var(--red); font-weight: 700; }
   .conflict-banner { background: var(--red-light); color: var(--red); border-radius: 10px; padding: 10px 14px; margin-bottom: 14px; font-size: 13px; }
 
-  .table-wrap { overflow: auto; max-height: 68vh; border-radius: 10px; }
+  .table-wrap { overflow-x: auto; border-radius: 10px; cursor: grab; user-select: none; }
+  .table-wrap.dragging { cursor: grabbing; }
   .scroll-arrows { display: flex; gap: 6px; }
   .scroll-arrow-btn { border: 1px solid var(--border); background: white; border-radius: 8px; width: 34px; height: 34px; cursor: pointer; font-size: 15px; font-weight: 700; color: var(--teal); }
   .scroll-arrow-btn:active { background: var(--teal-light); }
@@ -670,6 +671,38 @@ function scrollMatrixBy(direction) {
   wrap.scrollBy({ left: direction * 420, behavior: 'smooth' });
 }
 
+function setupMatrixDragScroll() {
+  const wrap = document.getElementById('matrix-scroll-wrap');
+  let isDown = false, startX = 0, startY = 0, scrollLeftStart = 0, scrollTopStart = 0, moved = false;
+
+  wrap.addEventListener('mousedown', (e) => {
+    isDown = true;
+    moved = false;
+    wrap.classList.add('dragging');
+    startX = e.pageX;
+    startY = e.pageY;
+    scrollLeftStart = wrap.scrollLeft;
+    scrollTopStart = wrap.scrollTop;
+  });
+  window.addEventListener('mouseup', () => {
+    isDown = false;
+    wrap.classList.remove('dragging');
+  });
+  window.addEventListener('mousemove', (e) => {
+    if (!isDown) return;
+    const dx = e.pageX - startX;
+    const dy = e.pageY - startY;
+    if (Math.abs(dx) > 4 || Math.abs(dy) > 4) moved = true;
+    if (moved) {
+      wrap.scrollLeft = scrollLeftStart - dx;
+      wrap.scrollTop = scrollTopStart - dy;
+    }
+  });
+  wrap.addEventListener('click', (e) => {
+    if (moved) { e.stopPropagation(); e.preventDefault(); }
+  }, true);
+}
+
 function fmtDateShort(ds) {
   const [y, m, d] = ds.split('-').map(Number);
   return `${d} ${THAI_MONTHS[m - 1]}`;
@@ -1087,6 +1120,7 @@ sb.channel('shifthr-changes')
   .subscribe();
 
 updateLockBtn();
+setupMatrixDragScroll();
 loadAll();
 </script>
 </body>
