@@ -1,0 +1,988 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ระบบตารางกะ HR</title>
+<style>
+  :root {
+    --teal: #0d9488;
+    --teal-dark: #0f766e;
+    --teal-light: #ccfbf1;
+    --red: #ef4444;
+    --red-light: #fee2e2;
+    --orange: #f97316;
+    --orange-light: #ffedd5;
+    --blue: #3b82f6;
+    --blue-light: #dbeafe;
+    --gray: #9ca3af;
+    --gray-light: #f3f4f6;
+    --text: #1f2937;
+    --text-muted: #6b7280;
+    --bg: #f5f5f7;
+    --card-bg: #ffffff;
+    --border: #e5e7eb;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", "Sarabun", Tahoma, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    padding-bottom: 40px;
+  }
+  .container { max-width: 1100px; margin: 0 auto; padding: 0 16px; }
+  header {
+    background: linear-gradient(135deg, var(--teal), var(--teal-dark));
+    color: white;
+    padding: 18px 16px;
+    margin-bottom: 16px;
+  }
+  .header-row { max-width: 1100px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  .header-title { display: flex; align-items: center; gap: 12px; }
+  .header-icon { width: 42px; height: 42px; border-radius: 12px; background: rgba(255,255,255,0.15); display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0; }
+  header h1 { margin: 0; font-size: 19px; }
+  header p { margin: 2px 0 0; font-size: 12.5px; opacity: 0.85; }
+  .user-box { display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.15); border-radius: 10px; padding: 6px 10px; font-size: 13px; }
+  .user-box select { background: transparent; color: white; border: none; font-size: 13px; font-weight: 600; }
+  .user-box select option { color: black; }
+  .lock-btn { background: white; color: var(--teal-dark); border: none; border-radius: 8px; padding: 6px 12px; font-size: 12.5px; font-weight: 700; cursor: pointer; }
+  .lock-btn.unlocked { background: #dcfce7; color: #166534; }
+
+  .tabs { display: flex; background: var(--gray-light); border-radius: 14px; padding: 6px; margin-bottom: 16px; gap: 4px; flex-wrap: wrap; }
+  .tab { flex: 1; min-width: 110px; text-align: center; padding: 11px 6px; border-radius: 10px; cursor: pointer; font-size: 13.5px; font-weight: 600; color: var(--text-muted); user-select: none; }
+  .tab.active { background: var(--teal); color: white; }
+
+  .card { background: var(--card-bg); border-radius: 14px; padding: 16px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+  .row-between { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
+  .month-nav { display: flex; align-items: center; gap: 8px; }
+  .nav-btn { border: 1px solid var(--border); background: white; border-radius: 8px; width: 32px; height: 32px; cursor: pointer; font-size: 14px; }
+  .month-label { font-size: 16px; font-weight: 700; min-width: 130px; text-align: center; }
+  .today-btn { border: 1px solid var(--border); background: white; border-radius: 8px; padding: 0 12px; height: 32px; cursor: pointer; font-size: 12.5px; font-weight: 600; color: var(--teal); }
+
+  .btn { border: none; border-radius: 8px; padding: 8px 14px; font-size: 13px; font-weight: 600; cursor: pointer; }
+  .btn-primary { background: var(--teal); color: white; }
+  .btn-secondary { background: var(--gray-light); color: var(--text); }
+  .btn-sm { padding: 4px 10px; font-size: 12px; }
+  .btn-danger { background: var(--red-light); color: var(--red); }
+
+  table.matrix { border-collapse: collapse; width: 100%; font-size: 12.5px; }
+  table.matrix th, table.matrix td { border: 1px solid var(--border); padding: 4px; vertical-align: top; }
+  table.matrix th { background: var(--gray-light); font-size: 11.5px; position: sticky; top: 0; }
+  table.matrix .date-cell { font-weight: 700; white-space: nowrap; background: #fafafa; min-width: 60px; }
+  table.matrix .date-cell.weekend { color: var(--red); }
+  .shift-chip { display: block; border-radius: 6px; padding: 2px 6px; margin-bottom: 2px; font-size: 11px; cursor: pointer; }
+  .shift-chip.normal { background: var(--blue-light); color: var(--blue); }
+  .shift-chip.swapped { background: var(--orange-light); color: var(--orange); }
+  .shift-chip.sick { background: var(--red-light); color: var(--red); }
+  .add-cell-btn { color: var(--gray); cursor: pointer; font-size: 14px; text-align: center; display: block; }
+  .off-chip { display: inline-block; background: var(--gray-light); color: var(--text-muted); border-radius: 6px; padding: 2px 8px; margin: 1px; font-size: 11px; }
+  .off-chip.conflict { background: var(--red-light); color: var(--red); font-weight: 700; }
+  .conflict-banner { background: var(--red-light); color: var(--red); border-radius: 10px; padding: 10px 14px; margin-bottom: 14px; font-size: 13px; }
+
+  .table-wrap { overflow-x: auto; }
+  table.simple { border-collapse: collapse; width: 100%; font-size: 13.5px; }
+  table.simple th, table.simple td { border-bottom: 1px solid var(--border); padding: 8px 10px; text-align: left; }
+  table.simple th { color: var(--text-muted); font-size: 12px; font-weight: 600; }
+  .total-row td { font-weight: 700; background: var(--teal-light); }
+
+  .badge { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; }
+  .badge.regular { background: var(--blue-light); color: var(--blue); }
+  .badge.freelance { background: var(--orange-light); color: var(--orange); }
+  .badge.on { background: #dcfce7; color: #166534; }
+  .badge.off { background: var(--gray-light); color: var(--text-muted); }
+
+  .form-group { margin-bottom: 14px; }
+  .form-group label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; color: var(--text-muted); }
+  .form-group input, .form-group select, .form-group textarea {
+    width: 100%; padding: 9px 12px; border: 1px solid var(--border); border-radius: 10px; font-size: 14px; font-family: inherit; outline: none;
+  }
+  .form-row { display: flex; gap: 10px; }
+  .form-row .form-group { flex: 1; }
+
+  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: none; align-items: center; justify-content: center; z-index: 100; padding: 16px; }
+  .modal-overlay.open { display: flex; }
+  .modal { background: white; border-radius: 16px; width: 100%; max-width: 460px; padding: 20px; max-height: 90vh; overflow-y: auto; }
+  .modal h2 { margin: 0 0 16px; font-size: 17px; }
+  .modal-actions { display: flex; gap: 10px; margin-top: 16px; }
+  .modal-actions .btn { flex: 1; }
+
+  .pin-box { text-align: center; padding: 30px 10px; }
+  .pin-box input { text-align: center; font-size: 22px; letter-spacing: 6px; max-width: 200px; margin: 12px auto; }
+
+  .staff-list-item, .page-list-item { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--border); gap: 10px; flex-wrap: wrap; }
+  .toggle { position: relative; width: 40px; height: 22px; }
+  .toggle input { opacity: 0; width: 0; height: 0; }
+  .toggle span { position: absolute; inset: 0; background: var(--gray-light); border-radius: 999px; cursor: pointer; transition: 0.2s; }
+  .toggle span:before { content: ""; position: absolute; width: 16px; height: 16px; left: 3px; top: 3px; background: white; border-radius: 50%; transition: 0.2s; }
+  .toggle input:checked + span { background: var(--teal); }
+  .toggle input:checked + span:before { transform: translateX(18px); }
+
+  .empty-state { text-align: center; padding: 30px; color: var(--text-muted); font-size: 13.5px; }
+  .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #1f2937; color: white; padding: 10px 20px; border-radius: 10px; font-size: 13px; z-index: 200; opacity: 0; transition: opacity 0.3s; pointer-events: none; }
+  .toast.show { opacity: 1; }
+  .section-title { font-size: 14.5px; font-weight: 700; margin: 18px 0 10px; }
+  .chip-select { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+  .chip-select label { display: flex; align-items: center; gap: 4px; background: var(--gray-light); border-radius: 999px; padding: 4px 10px; font-size: 12.5px; font-weight: 500; cursor: pointer; }
+  .chip-select input:checked ~ span { color: var(--teal); font-weight: 700; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-row">
+    <div class="header-title">
+      <div class="header-icon">🗓️</div>
+      <div>
+        <h1>ระบบตารางกะ HR</h1>
+        <p>ตารางกะ / ไทม์ชีต / สรุปชั่วโมง จุดเดียวจบ</p>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+      <div class="user-box">
+        👤 <select id="user-select" onchange="onUserChange()"></select>
+      </div>
+      <button class="lock-btn" id="lock-btn" onclick="openUnlockModal()">🔒 ปลดล็อกแก้ไข</button>
+    </div>
+  </div>
+</header>
+
+<div class="container">
+
+  <div class="tabs">
+    <div class="tab active" data-tab="matrix" onclick="switchTab('matrix')">📅 ตารางรายเดือน</div>
+    <div class="tab" data-tab="timesheet" onclick="switchTab('timesheet')">🧾 ไทม์ชีตรายคน</div>
+    <div class="tab" data-tab="summary" onclick="switchTab('summary')">📊 สรุปชั่วโมง</div>
+    <div class="tab" data-tab="admin" onclick="switchTab('admin')">⚙️ จัดการ (HR)</div>
+  </div>
+
+  <!-- TAB: MATRIX -->
+  <div id="panel-matrix">
+    <div class="card">
+      <div class="row-between">
+        <div class="month-nav">
+          <button class="nav-btn" onclick="matrixPrevMonth()">◀</button>
+          <div class="month-label" id="matrix-month-label"></div>
+          <button class="nav-btn" onclick="matrixNextMonth()">▶</button>
+        </div>
+        <button class="today-btn" onclick="matrixGoToday()">เดือนนี้</button>
+      </div>
+    </div>
+    <div id="conflict-banner-area"></div>
+    <div class="card">
+      <div class="table-wrap">
+        <table class="matrix" id="matrix-table"></table>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB: TIMESHEET -->
+  <div id="panel-timesheet" style="display:none">
+    <div class="card">
+      <div class="row-between">
+        <div class="form-group" style="min-width:200px;margin-bottom:0">
+          <label>เลือกคน</label>
+          <select id="ts-staff-select" onchange="renderTimesheet()"></select>
+        </div>
+        <div class="month-nav">
+          <button class="nav-btn" onclick="tsPrevMonth()">◀</button>
+          <div class="month-label" id="ts-month-label"></div>
+          <button class="nav-btn" onclick="tsNextMonth()">▶</button>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="table-wrap">
+        <table class="simple" id="ts-table"></table>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB: SUMMARY -->
+  <div id="panel-summary" style="display:none">
+    <div class="card">
+      <div class="row-between">
+        <div class="month-nav">
+          <button class="nav-btn" onclick="sumPrevMonth()">◀</button>
+          <div class="month-label" id="sum-month-label"></div>
+          <button class="nav-btn" onclick="sumNextMonth()">▶</button>
+        </div>
+        <button class="btn btn-primary" onclick="exportSummaryExcel()">📥 Export Excel</button>
+      </div>
+    </div>
+    <div id="summary-content"></div>
+  </div>
+
+  <!-- TAB: ADMIN -->
+  <div id="panel-admin" style="display:none">
+    <div id="admin-locked" class="card">
+      <div class="pin-box">
+        <div style="font-size:15px;font-weight:700">🔐 กรุณาใส่รหัส HR เพื่อจัดการระบบ</div>
+        <input type="password" id="hr-pin-input" maxlength="10" placeholder="รหัส HR">
+        <div><button class="btn btn-primary" onclick="checkHrPin()">ยืนยัน</button></div>
+      </div>
+    </div>
+    <div id="admin-unlocked" style="display:none">
+      <div class="card">
+        <div class="row-between">
+          <div class="section-title" style="margin:0">📄 จัดการเพจ</div>
+          <button class="btn btn-primary btn-sm" onclick="openPageModal()">+ เพิ่มเพจ</button>
+        </div>
+        <div id="admin-pages-list"></div>
+      </div>
+      <div class="card">
+        <div class="row-between">
+          <div class="section-title" style="margin:0">👥 จัดการพนักงาน</div>
+          <button class="btn btn-primary btn-sm" onclick="openStaffModal()">+ เพิ่มพนักงาน</button>
+        </div>
+        <div id="admin-staff-list"></div>
+      </div>
+      <div class="card">
+        <div class="section-title" style="margin:0 0 10px">🔑 เปลี่ยนรหัส HR</div>
+        <div class="form-row">
+          <div class="form-group"><input type="text" id="new-hr-pin" placeholder="รหัสใหม่"></div>
+          <button class="btn btn-secondary" onclick="changeHrPin()">บันทึก</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Unlock Edit Modal -->
+<div class="modal-overlay" id="unlock-modal">
+  <div class="modal">
+    <h2>🔓 ปลดล็อกสิทธิ์แก้ไข</h2>
+    <div class="form-group">
+      <label>คุณคือ</label>
+      <input type="text" id="unlock-name-display" disabled>
+    </div>
+    <div class="form-group">
+      <label>รหัส PIN ของคุณ</label>
+      <input type="password" id="unlock-pin-input" maxlength="10" placeholder="ใส่ PIN">
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('unlock-modal')">ยกเลิก</button>
+      <button class="btn btn-primary" onclick="submitUnlock()">ปลดล็อก</button>
+    </div>
+  </div>
+</div>
+
+<!-- Shift Modal -->
+<div class="modal-overlay" id="shift-modal">
+  <div class="modal">
+    <h2 id="shift-modal-title">เพิ่มกะงาน</h2>
+    <input type="hidden" id="shift-id">
+    <div class="form-group">
+      <label>วันที่</label>
+      <input type="date" id="shift-date">
+    </div>
+    <div class="form-group">
+      <label>สถานะ</label>
+      <select id="shift-status" onchange="onShiftStatusChange()">
+        <option value="normal">ปกติ</option>
+        <option value="swapped">สลับกะ</option>
+        <option value="sick">ลาป่วยกะทันหัน</option>
+        <option value="off">หยุด (ไม่ระบุเพจ)</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>คนทำงาน</label>
+      <select id="shift-staff"></select>
+    </div>
+    <div class="form-group" id="shift-page-group">
+      <label>เพจ</label>
+      <select id="shift-page" onchange="onShiftPageChange()"></select>
+    </div>
+    <div class="form-row" id="shift-time-group">
+      <div class="form-group"><label>เวลาเข้า</label><input type="time" id="shift-start"></div>
+      <div class="form-group"><label>เวลาออก</label><input type="time" id="shift-end"></div>
+    </div>
+    <div class="form-row" id="shift-break-group">
+      <div class="form-group"><label>เวลาพัก (นาที)</label><input type="number" id="shift-break" value="0" min="0"></div>
+      <div class="form-group"><label>OT (ชั่วโมง)</label><input type="number" id="shift-ot" value="0" min="0" step="0.5"></div>
+    </div>
+    <div class="form-group">
+      <label>หมายเหตุ</label>
+      <textarea id="shift-note" rows="2"></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-danger" id="shift-delete-btn" onclick="deleteShift()" style="display:none">ลบ</button>
+      <button class="btn btn-secondary" onclick="closeModal('shift-modal')">ยกเลิก</button>
+      <button class="btn btn-primary" onclick="saveShift()">บันทึก</button>
+    </div>
+  </div>
+</div>
+
+<!-- Page Modal -->
+<div class="modal-overlay" id="page-modal">
+  <div class="modal">
+    <h2 id="page-modal-title">เพิ่มเพจ</h2>
+    <input type="hidden" id="page-id">
+    <div class="form-group"><label>ชื่อเพจ</label><input type="text" id="page-name"></div>
+    <div class="form-row">
+      <div class="form-group"><label>เวลาเข้า default</label><input type="time" id="page-start"></div>
+      <div class="form-group"><label>เวลาออก default</label><input type="time" id="page-end"></div>
+    </div>
+    <div class="form-group"><label>เวลาพัก default (นาที)</label><input type="number" id="page-break" value="0" min="0"></div>
+    <div class="modal-actions">
+      <button class="btn btn-danger" id="page-delete-btn" onclick="deletePage()" style="display:none">ลบ</button>
+      <button class="btn btn-secondary" onclick="closeModal('page-modal')">ยกเลิก</button>
+      <button class="btn btn-primary" onclick="savePage()">บันทึก</button>
+    </div>
+  </div>
+</div>
+
+<!-- Staff Modal -->
+<div class="modal-overlay" id="staff-modal">
+  <div class="modal">
+    <h2 id="staff-modal-title">เพิ่มพนักงาน</h2>
+    <input type="hidden" id="staff-id">
+    <div class="form-group"><label>ชื่อ</label><input type="text" id="staff-name"></div>
+    <div class="form-group">
+      <label>ประเภท</label>
+      <select id="staff-type">
+        <option value="freelance">ฟรีแลนซ์</option>
+        <option value="regular">พนักงานประจำ</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>เพจที่รับผิดชอบ</label>
+      <div class="chip-select" id="staff-pages-select"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group" style="display:flex;align-items:center;gap:10px">
+        <label style="margin:0">สิทธิ์แก้ไขตาราง</label>
+        <label class="toggle"><input type="checkbox" id="staff-can-edit"><span></span></label>
+      </div>
+    </div>
+    <div class="form-group"><label>PIN สำหรับแก้ไข (ถ้าเปิดสิทธิ์)</label><input type="text" id="staff-pin" placeholder="เช่น 1234"></div>
+    <div class="modal-actions">
+      <button class="btn btn-danger" id="staff-delete-btn" onclick="deleteStaff()" style="display:none">ลบ</button>
+      <button class="btn btn-secondary" onclick="closeModal('staff-modal')">ยกเลิก</button>
+      <button class="btn btn-primary" onclick="saveStaff()">บันทึก</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script>
+const SUPABASE_URL = "https://gcxdapfieuqtyushftdz.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_RaehySeMQPT8q8Q-Qf1rLQ_bYK6Hm4h";
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+const STATUS_LABEL = { normal: 'ปกติ', swapped: 'สลับกะ', sick: 'ลาป่วยกะทันหัน', off: 'หยุด' };
+const THAI_MONTHS = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
+const THAI_DOW = ['อา.','จ.','อ.','พ.','พฤ.','ศ.','ส.'];
+
+let pages = [], staff = [], staffPages = [], shifts = [], settings = { hr_pin: '0000' };
+let editUnlocked = sessionStorage.getItem('shifthr_edit_unlocked') === '1';
+let hrUnlocked = sessionStorage.getItem('shifthr_hr_unlocked') === '1';
+let currentUserId = localStorage.getItem('shifthr_user_id') || '';
+
+const today = new Date();
+let matrixYear = today.getFullYear(), matrixMonth = today.getMonth();
+let tsYear = today.getFullYear(), tsMonth = today.getMonth();
+let sumYear = today.getFullYear(), sumMonth = today.getMonth();
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2000);
+}
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function pad(n) { return String(n).padStart(2, '0'); }
+function dateStr(y, m, d) { return `${y}-${pad(m + 1)}-${pad(d)}`; }
+function fmtTime(t) { return t ? t.slice(0, 5) : ''; }
+
+function hoursOf(start, end, breakMin) {
+  if (!start || !end) return 0;
+  const [sh, sm] = start.split(':').map(Number);
+  const [eh, em] = end.split(':').map(Number);
+  let mins = (eh * 60 + em) - (sh * 60 + sm);
+  if (mins < 0) mins += 24 * 60;
+  mins -= (breakMin || 0);
+  return Math.max(0, mins / 60);
+}
+
+async function loadAll() {
+  const [{ data: pd }, { data: sd }, { data: spd }, { data: sh }, { data: st }] = await Promise.all([
+    sb.from('pages').select('*').order('name'),
+    sb.from('staff').select('*').order('name'),
+    sb.from('staff_pages').select('*'),
+    sb.from('shifts').select('*'),
+    sb.from('app_settings').select('*').eq('id', 1).maybeSingle()
+  ]);
+  pages = pd || []; staff = sd || []; staffPages = spd || []; shifts = sh || [];
+  if (st) settings = st;
+  populateUserSelect();
+  renderAll();
+}
+
+function populateUserSelect() {
+  const sel = document.getElementById('user-select');
+  const active = staff.filter(s => s.active);
+  sel.innerHTML = '<option value="">-- เลือกชื่อ --</option>' + active.map(s => `<option value="${s.id}">${escapeHtml(s.name)}</option>`).join('');
+  if (currentUserId) sel.value = currentUserId;
+  updateLockBtn();
+}
+function onUserChange() {
+  currentUserId = document.getElementById('user-select').value;
+  localStorage.setItem('shifthr_user_id', currentUserId);
+  editUnlocked = false;
+  sessionStorage.removeItem('shifthr_edit_unlocked');
+  updateLockBtn();
+  renderMatrix();
+}
+function currentUser() { return staff.find(s => s.id === currentUserId); }
+function updateLockBtn() {
+  const btn = document.getElementById('lock-btn');
+  if (editUnlocked) { btn.textContent = '🔓 แก้ไขได้'; btn.classList.add('unlocked'); }
+  else { btn.textContent = '🔒 ปลดล็อกแก้ไข'; btn.classList.remove('unlocked'); }
+}
+function canEditNow() { return editUnlocked; }
+
+function openUnlockModal() {
+  const u = currentUser();
+  if (!u) { showToast('กรุณาเลือกชื่อของคุณก่อน'); return; }
+  if (editUnlocked) { editUnlocked = false; sessionStorage.removeItem('shifthr_edit_unlocked'); updateLockBtn(); renderMatrix(); showToast('ล็อกแล้ว'); return; }
+  if (!u.can_edit) { showToast('คุณไม่มีสิทธิ์แก้ไขตารางนี้ ติดต่อ HR'); return; }
+  document.getElementById('unlock-name-display').value = u.name;
+  document.getElementById('unlock-pin-input').value = '';
+  openModal('unlock-modal');
+}
+function submitUnlock() {
+  const u = currentUser();
+  const pin = document.getElementById('unlock-pin-input').value;
+  if (u && u.edit_pin && pin === u.edit_pin) {
+    editUnlocked = true;
+    sessionStorage.setItem('shifthr_edit_unlocked', '1');
+    updateLockBtn();
+    renderMatrix();
+    closeModal('unlock-modal');
+    showToast('ปลดล็อกสำเร็จ');
+  } else {
+    showToast('PIN ไม่ถูกต้อง');
+  }
+}
+
+function switchTab(tab) {
+  document.querySelectorAll('.tab').forEach(el => el.classList.toggle('active', el.dataset.tab === tab));
+  ['matrix','timesheet','summary','admin'].forEach(t => {
+    document.getElementById('panel-' + t).style.display = (t === tab) ? '' : 'none';
+  });
+  if (tab === 'timesheet') renderTimesheet();
+  if (tab === 'summary') renderSummary();
+  if (tab === 'admin') renderAdmin();
+}
+
+function renderAll() {
+  renderMatrix();
+  if (document.getElementById('panel-timesheet').style.display !== 'none') renderTimesheet();
+  if (document.getElementById('panel-summary').style.display !== 'none') renderSummary();
+  if (document.getElementById('panel-admin').style.display !== 'none') renderAdmin();
+}
+
+function escapeHtml(s) { const d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
+function pageName(id) { const p = pages.find(x => x.id === id); return p ? p.name : ''; }
+function staffName(id) { const s = staff.find(x => x.id === id); return s ? s.name : '?'; }
+
+// ---- Conflict detection: staff sharing a page both marked off same date ----
+function findConflicts(y, m) {
+  const conflicts = {}; // dateStr -> [ {a,b,pageId} ]
+  const daysInMonth = new Date(y, m + 1, 0).getDate();
+  for (let d = 1; d <= daysInMonth; d++) {
+    const ds = dateStr(y, m, d);
+    const offShifts = shifts.filter(s => s.work_date === ds && s.status === 'off');
+    for (let i = 0; i < offShifts.length; i++) {
+      for (let j = i + 1; j < offShifts.length; j++) {
+        const aPages = staffPages.filter(sp => sp.staff_id === offShifts[i].staff_id).map(sp => sp.page_id);
+        const bPages = staffPages.filter(sp => sp.staff_id === offShifts[j].staff_id).map(sp => sp.page_id);
+        const shared = aPages.filter(p => bPages.includes(p));
+        if (shared.length) {
+          conflicts[ds] = conflicts[ds] || [];
+          conflicts[ds].push({ a: offShifts[i].staff_id, b: offShifts[j].staff_id });
+        }
+      }
+    }
+  }
+  return conflicts;
+}
+
+// ---- MATRIX TAB ----
+function matrixPrevMonth() { matrixMonth--; if (matrixMonth < 0) { matrixMonth = 11; matrixYear--; } renderMatrix(); }
+function matrixNextMonth() { matrixMonth++; if (matrixMonth > 11) { matrixMonth = 0; matrixYear++; } renderMatrix(); }
+function matrixGoToday() { matrixYear = today.getFullYear(); matrixMonth = today.getMonth(); renderMatrix(); }
+
+function renderMatrix() {
+  document.getElementById('matrix-month-label').textContent = `${THAI_MONTHS[matrixMonth]} ${matrixYear + 543}`;
+  const activePages = pages.filter(p => p.active);
+  const daysInMonth = new Date(matrixYear, matrixMonth + 1, 0).getDate();
+  const conflicts = findConflicts(matrixYear, matrixMonth);
+
+  const bannerArea = document.getElementById('conflict-banner-area');
+  const conflictDates = Object.keys(conflicts);
+  if (conflictDates.length) {
+    bannerArea.innerHTML = `<div class="conflict-banner">⚠️ พบวันที่มีคนหยุดพร้อมกันในเพจเดียวกัน: ${conflictDates.map(fmtDateShort).join(', ')}</div>`;
+  } else {
+    bannerArea.innerHTML = '';
+  }
+
+  let html = '<thead><tr><th class="date-cell">วันที่</th>';
+  activePages.forEach(p => html += `<th>${escapeHtml(p.name)}</th>`);
+  html += '<th>หยุด</th></tr></thead><tbody>';
+
+  for (let d = 1; d <= daysInMonth; d++) {
+    const ds = dateStr(matrixYear, matrixMonth, d);
+    const dow = new Date(matrixYear, matrixMonth, d).getDay();
+    const isWeekend = dow === 0 || dow === 6;
+    html += `<tr><td class="date-cell ${isWeekend ? 'weekend' : ''}">${d} ${THAI_DOW[dow]}</td>`;
+
+    activePages.forEach(p => {
+      const cellShifts = shifts.filter(s => s.work_date === ds && s.page_id === p.id && s.status !== 'off');
+      html += '<td>';
+      cellShifts.forEach(s => {
+        html += `<span class="shift-chip ${s.status}" onclick="openShiftModal('${s.id}')">${escapeHtml(staffName(s.staff_id))}</span>`;
+      });
+      if (canEditNow()) html += `<span class="add-cell-btn" onclick="openShiftModal(null, '${ds}', '${p.id}')">+</span>`;
+      html += '</td>';
+    });
+
+    const offShifts = shifts.filter(s => s.work_date === ds && s.status === 'off');
+    const conflictPairs = conflicts[ds] || [];
+    const conflictStaffIds = new Set(conflictPairs.flatMap(c => [c.a, c.b]));
+    html += '<td>';
+    offShifts.forEach(s => {
+      const isConflict = conflictStaffIds.has(s.staff_id);
+      html += `<span class="off-chip ${isConflict ? 'conflict' : ''}" onclick="openShiftModal('${s.id}')">${escapeHtml(staffName(s.staff_id))}</span>`;
+    });
+    if (canEditNow()) html += `<span class="add-cell-btn" onclick="openShiftModal(null, '${ds}', null, true)">+</span>`;
+    html += '</td></tr>';
+  }
+  html += '</tbody>';
+  document.getElementById('matrix-table').innerHTML = html;
+}
+
+function fmtDateShort(ds) {
+  const [y, m, d] = ds.split('-').map(Number);
+  return `${d} ${THAI_MONTHS[m - 1]}`;
+}
+
+// ---- SHIFT MODAL ----
+function fillStaffSelect(selectEl, selectedId) {
+  selectEl.innerHTML = staff.filter(s => s.active).map(s => `<option value="${s.id}">${escapeHtml(s.name)}</option>`).join('');
+  if (selectedId) selectEl.value = selectedId;
+}
+function fillPageSelect(selectEl, selectedId) {
+  selectEl.innerHTML = '<option value="">-- ไม่ระบุ --</option>' + pages.filter(p => p.active).map(p => `<option value="${p.id}">${escapeHtml(p.name)}</option>`).join('');
+  if (selectedId) selectEl.value = selectedId;
+}
+
+function openShiftModal(id, prefillDate, prefillPageId, prefillOff) {
+  if (!canEditNow()) { showToast('กรุณาปลดล็อกสิทธิ์แก้ไขก่อน'); return; }
+  fillStaffSelect(document.getElementById('shift-staff'));
+  fillPageSelect(document.getElementById('shift-page'));
+  document.getElementById('shift-delete-btn').style.display = id ? '' : 'none';
+
+  if (id) {
+    const s = shifts.find(x => x.id === id);
+    document.getElementById('shift-modal-title').textContent = 'แก้ไขกะงาน';
+    document.getElementById('shift-id').value = s.id;
+    document.getElementById('shift-date').value = s.work_date;
+    document.getElementById('shift-status').value = s.status;
+    document.getElementById('shift-staff').value = s.staff_id;
+    document.getElementById('shift-page').value = s.page_id || '';
+    document.getElementById('shift-start').value = fmtTime(s.start_time);
+    document.getElementById('shift-end').value = fmtTime(s.end_time);
+    document.getElementById('shift-break').value = s.break_minutes;
+    document.getElementById('shift-ot').value = s.ot_hours;
+    document.getElementById('shift-note').value = s.note || '';
+  } else {
+    document.getElementById('shift-modal-title').textContent = 'เพิ่มกะงาน';
+    document.getElementById('shift-id').value = '';
+    document.getElementById('shift-date').value = prefillDate || dateStr(matrixYear, matrixMonth, 1);
+    document.getElementById('shift-status').value = prefillOff ? 'off' : 'normal';
+    document.getElementById('shift-staff').value = currentUserId || (staff[0] && staff[0].id) || '';
+    document.getElementById('shift-page').value = prefillPageId || '';
+    document.getElementById('shift-break').value = 0;
+    document.getElementById('shift-ot').value = 0;
+    document.getElementById('shift-note').value = '';
+    if (prefillPageId) {
+      const p = pages.find(x => x.id === prefillPageId);
+      document.getElementById('shift-start').value = p && p.default_start ? fmtTime(p.default_start) : '';
+      document.getElementById('shift-end').value = p && p.default_end ? fmtTime(p.default_end) : '';
+      document.getElementById('shift-break').value = p ? p.default_break_minutes : 0;
+    } else {
+      document.getElementById('shift-start').value = '';
+      document.getElementById('shift-end').value = '';
+    }
+  }
+  onShiftStatusChange();
+  openModal('shift-modal');
+}
+
+function onShiftStatusChange() {
+  const isOff = document.getElementById('shift-status').value === 'off';
+  document.getElementById('shift-page-group').style.display = isOff ? 'none' : '';
+  document.getElementById('shift-time-group').style.display = isOff ? 'none' : '';
+  document.getElementById('shift-break-group').style.display = isOff ? 'none' : '';
+}
+
+function onShiftPageChange() {
+  const pid = document.getElementById('shift-page').value;
+  const p = pages.find(x => x.id === pid);
+  if (p) {
+    document.getElementById('shift-start').value = p.default_start ? fmtTime(p.default_start) : '';
+    document.getElementById('shift-end').value = p.default_end ? fmtTime(p.default_end) : '';
+    document.getElementById('shift-break').value = p.default_break_minutes;
+  }
+}
+
+async function saveShift() {
+  const id = document.getElementById('shift-id').value;
+  const status = document.getElementById('shift-status').value;
+  const isOff = status === 'off';
+  const payload = {
+    work_date: document.getElementById('shift-date').value,
+    staff_id: document.getElementById('shift-staff').value,
+    status,
+    page_id: isOff ? null : (document.getElementById('shift-page').value || null),
+    start_time: isOff ? null : (document.getElementById('shift-start').value || null),
+    end_time: isOff ? null : (document.getElementById('shift-end').value || null),
+    break_minutes: isOff ? 0 : (parseInt(document.getElementById('shift-break').value) || 0),
+    ot_hours: isOff ? 0 : (parseFloat(document.getElementById('shift-ot').value) || 0),
+    note: document.getElementById('shift-note').value.trim() || null,
+    updated_at: new Date().toISOString()
+  };
+  if (!payload.work_date || !payload.staff_id) { showToast('กรอกข้อมูลให้ครบ'); return; }
+
+  let error;
+  if (id) ({ error } = await sb.from('shifts').update(payload).eq('id', id));
+  else ({ error } = await sb.from('shifts').insert(payload));
+
+  if (error) { showToast('บันทึกล้มเหลว: ' + error.message); return; }
+  closeModal('shift-modal');
+  await loadAll();
+  showToast('บันทึกสำเร็จ');
+}
+
+async function deleteShift() {
+  const id = document.getElementById('shift-id').value;
+  if (!id) return;
+  const { error } = await sb.from('shifts').delete().eq('id', id);
+  if (error) { showToast('ลบล้มเหลว'); return; }
+  closeModal('shift-modal');
+  await loadAll();
+  showToast('ลบแล้ว');
+}
+
+// ---- TIMESHEET TAB ----
+function tsPrevMonth() { tsMonth--; if (tsMonth < 0) { tsMonth = 11; tsYear--; } renderTimesheet(); }
+function tsNextMonth() { tsMonth++; if (tsMonth > 11) { tsMonth = 0; tsYear++; } renderTimesheet(); }
+
+function renderTimesheet() {
+  const sel = document.getElementById('ts-staff-select');
+  if (!sel.dataset.filled) {
+    sel.innerHTML = staff.filter(s => s.active).map(s => `<option value="${s.id}">${escapeHtml(s.name)}</option>`).join('');
+    sel.dataset.filled = '1';
+    if (currentUserId) sel.value = currentUserId;
+  }
+  document.getElementById('ts-month-label').textContent = `${THAI_MONTHS[tsMonth]} ${tsYear + 543}`;
+  const staffId = sel.value;
+  if (!staffId) { document.getElementById('ts-table').innerHTML = '<tr><td class="empty-state">เลือกคนก่อน</td></tr>'; return; }
+
+  const monthPrefix = `${tsYear}-${pad(tsMonth + 1)}`;
+  const rows = shifts.filter(s => s.staff_id === staffId && s.work_date.startsWith(monthPrefix)).sort((a, b) => a.work_date.localeCompare(b.work_date));
+
+  let totalHours = 0, totalOt = 0;
+  let html = '<thead><tr><th>วันที่</th><th>เพจ</th><th>เข้า</th><th>ออก</th><th>พัก(นาที)</th><th>ชั่วโมงทำงาน</th><th>OT</th><th>หมายเหตุ</th></tr></thead><tbody>';
+  if (!rows.length) {
+    html += '<tr><td colspan="8" class="empty-state">ไม่มีข้อมูลเดือนนี้</td></tr>';
+  }
+  rows.forEach(s => {
+    if (s.status === 'off') {
+      html += `<tr><td>${fmtDateShort(s.work_date)}</td><td colspan="6" style="color:var(--text-muted)">หยุด</td><td>${escapeHtml(s.note || '')}</td></tr>`;
+      return;
+    }
+    const hrs = hoursOf(s.start_time, s.end_time, s.break_minutes);
+    totalHours += hrs; totalOt += Number(s.ot_hours || 0);
+    html += `<tr>
+      <td>${fmtDateShort(s.work_date)}</td>
+      <td>${escapeHtml(pageName(s.page_id))}</td>
+      <td>${fmtTime(s.start_time)}</td>
+      <td>${fmtTime(s.end_time)}</td>
+      <td>${s.break_minutes}</td>
+      <td>${hrs.toFixed(1)}</td>
+      <td>${Number(s.ot_hours || 0).toFixed(1)}</td>
+      <td>${escapeHtml(s.note || '')}${s.status !== 'normal' ? ' <i>(' + STATUS_LABEL[s.status] + ')</i>' : ''}</td>
+    </tr>`;
+  });
+  html += `<tr class="total-row"><td colspan="5">รวม</td><td>${totalHours.toFixed(1)}</td><td>${totalOt.toFixed(1)}</td><td></td></tr>`;
+  html += '</tbody>';
+  document.getElementById('ts-table').innerHTML = html;
+}
+
+// ---- SUMMARY TAB ----
+function sumPrevMonth() { sumMonth--; if (sumMonth < 0) { sumMonth = 11; sumYear--; } renderSummary(); }
+function sumNextMonth() { sumMonth++; if (sumMonth > 11) { sumMonth = 0; sumYear++; } renderSummary(); }
+
+function computeSummaryData() {
+  document.getElementById('sum-month-label').textContent = `${THAI_MONTHS[sumMonth]} ${sumYear + 543}`;
+  const monthPrefix = `${sumYear}-${pad(sumMonth + 1)}`;
+  const monthShifts = shifts.filter(s => s.work_date.startsWith(monthPrefix) && s.status !== 'off');
+
+  const byStaff = {};
+  monthShifts.forEach(s => {
+    if (!byStaff[s.staff_id]) byStaff[s.staff_id] = {};
+    const key = [s.page_id || '-', s.start_time || '-', s.end_time || '-', s.break_minutes].join('|');
+    if (!byStaff[s.staff_id][key]) {
+      byStaff[s.staff_id][key] = { page_id: s.page_id, start_time: s.start_time, end_time: s.end_time, break_minutes: s.break_minutes, count: 0, ot: 0 };
+    }
+    byStaff[s.staff_id][key].count++;
+    byStaff[s.staff_id][key].ot += Number(s.ot_hours || 0);
+  });
+  return byStaff;
+}
+
+function renderSummary() {
+  const byStaff = computeSummaryData();
+  const container = document.getElementById('summary-content');
+  const staffIds = Object.keys(byStaff);
+  if (!staffIds.length) { container.innerHTML = '<div class="card"><div class="empty-state">ไม่มีข้อมูลเดือนนี้</div></div>'; return; }
+
+  let html = '';
+  staffIds.forEach(sid => {
+    const s = staff.find(x => x.id === sid);
+    const patterns = Object.values(byStaff[sid]);
+    let staffTotal = 0, staffOt = 0;
+    let rows = patterns.map(p => {
+      const hrsEach = hoursOf(p.start_time, p.end_time, p.break_minutes);
+      const total = hrsEach * p.count;
+      staffTotal += total; staffOt += p.ot;
+      return `<tr>
+        <td>${escapeHtml(pageName(p.page_id))} (${fmtTime(p.start_time)}-${fmtTime(p.end_time)})</td>
+        <td>${p.count}</td>
+        <td>${hrsEach.toFixed(1)}</td>
+        <td>${total.toFixed(1)}</td>
+        <td>${p.ot.toFixed(1)}</td>
+      </tr>`;
+    }).join('');
+    html += `<div class="card">
+      <div class="row-between" style="margin-bottom:8px">
+        <div style="font-weight:700">${escapeHtml(s ? s.name : '?')} ${s ? `<span class="badge ${s.type}">${s.type === 'regular' ? 'ประจำ' : 'ฟรีแลนซ์'}</span>` : ''}</div>
+        <div style="font-weight:700;color:var(--teal)">รวม ${staffTotal.toFixed(1)} ชม. (OT ${staffOt.toFixed(1)})</div>
+      </div>
+      <div class="table-wrap"><table class="simple">
+        <thead><tr><th>รูปแบบกะ</th><th>จำนวนครั้ง</th><th>ชม./ครั้ง</th><th>รวม ชม.</th><th>OT</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table></div>
+    </div>`;
+  });
+  container.innerHTML = html;
+}
+
+function exportSummaryExcel() {
+  const byStaff = computeSummaryData();
+  const rows = [];
+  Object.keys(byStaff).forEach(sid => {
+    const s = staff.find(x => x.id === sid);
+    Object.values(byStaff[sid]).forEach(p => {
+      const hrsEach = hoursOf(p.start_time, p.end_time, p.break_minutes);
+      rows.push({
+        'ชื่อ': s ? s.name : '?',
+        'ประเภท': s ? (s.type === 'regular' ? 'ประจำ' : 'ฟรีแลนซ์') : '',
+        'เพจ': pageName(p.page_id),
+        'เวลาเข้า': fmtTime(p.start_time),
+        'เวลาออก': fmtTime(p.end_time),
+        'พัก(นาที)': p.break_minutes,
+        'จำนวนครั้ง': p.count,
+        'ชม./ครั้ง': Number(hrsEach.toFixed(2)),
+        'รวมชั่วโมง': Number((hrsEach * p.count).toFixed(2)),
+        'OT รวม': Number(p.ot.toFixed(2))
+      });
+    });
+  });
+  if (!rows.length) { showToast('ไม่มีข้อมูลให้ export'); return; }
+  const ws = XLSX.utils.json_to_sheet(rows);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'สรุปชั่วโมง');
+  XLSX.writeFile(wb, `สรุปชั่วโมง-${THAI_MONTHS[sumMonth]}-${sumYear + 543}.xlsx`);
+}
+
+// ---- ADMIN TAB ----
+function checkHrPin() {
+  const val = document.getElementById('hr-pin-input').value;
+  if (val === settings.hr_pin) {
+    hrUnlocked = true;
+    sessionStorage.setItem('shifthr_hr_unlocked', '1');
+    renderAdmin();
+  } else {
+    showToast('รหัสไม่ถูกต้อง');
+  }
+}
+function changeHrPin() {
+  const val = document.getElementById('new-hr-pin').value.trim();
+  if (!val) return;
+  sb.from('app_settings').update({ hr_pin: val }).eq('id', 1).then(({ error }) => {
+    if (error) { showToast('บันทึกล้มเหลว'); return; }
+    settings.hr_pin = val;
+    document.getElementById('new-hr-pin').value = '';
+    showToast('เปลี่ยนรหัส HR แล้ว');
+  });
+}
+
+function renderAdmin() {
+  document.getElementById('admin-locked').style.display = hrUnlocked ? 'none' : '';
+  document.getElementById('admin-unlocked').style.display = hrUnlocked ? '' : 'none';
+  if (!hrUnlocked) return;
+
+  document.getElementById('admin-pages-list').innerHTML = pages.length ? pages.map(p => `
+    <div class="page-list-item">
+      <div><b>${escapeHtml(p.name)}</b> <span style="color:var(--text-muted);font-size:12.5px">${fmtTime(p.default_start)}-${fmtTime(p.default_end)} พัก ${p.default_break_minutes} นาที</span> ${p.active ? '' : '<span class="badge off">ปิดใช้งาน</span>'}</div>
+      <button class="btn btn-secondary btn-sm" onclick="openPageModal('${p.id}')">แก้ไข</button>
+    </div>
+  `).join('') : '<div class="empty-state">ยังไม่มีเพจ</div>';
+
+  document.getElementById('admin-staff-list').innerHTML = staff.length ? staff.map(s => `
+    <div class="staff-list-item">
+      <div><b>${escapeHtml(s.name)}</b> <span class="badge ${s.type}">${s.type === 'regular' ? 'ประจำ' : 'ฟรีแลนซ์'}</span> <span class="badge ${s.can_edit ? 'on' : 'off'}">${s.can_edit ? 'แก้ไขได้' : 'ดูอย่างเดียว'}</span> ${s.active ? '' : '<span class="badge off">ปิดใช้งาน</span>'}</div>
+      <button class="btn btn-secondary btn-sm" onclick="openStaffModal('${s.id}')">แก้ไข</button>
+    </div>
+  `).join('') : '<div class="empty-state">ยังไม่มีพนักงาน</div>';
+}
+
+// Page modal
+function openPageModal(id) {
+  document.getElementById('page-id').value = id || '';
+  document.getElementById('page-delete-btn').style.display = id ? '' : 'none';
+  if (id) {
+    const p = pages.find(x => x.id === id);
+    document.getElementById('page-modal-title').textContent = 'แก้ไขเพจ';
+    document.getElementById('page-name').value = p.name;
+    document.getElementById('page-start').value = fmtTime(p.default_start);
+    document.getElementById('page-end').value = fmtTime(p.default_end);
+    document.getElementById('page-break').value = p.default_break_minutes;
+  } else {
+    document.getElementById('page-modal-title').textContent = 'เพิ่มเพจ';
+    document.getElementById('page-name').value = '';
+    document.getElementById('page-start').value = '';
+    document.getElementById('page-end').value = '';
+    document.getElementById('page-break').value = 0;
+  }
+  openModal('page-modal');
+}
+async function savePage() {
+  const id = document.getElementById('page-id').value;
+  const payload = {
+    name: document.getElementById('page-name').value.trim(),
+    default_start: document.getElementById('page-start').value || null,
+    default_end: document.getElementById('page-end').value || null,
+    default_break_minutes: parseInt(document.getElementById('page-break').value) || 0
+  };
+  if (!payload.name) { showToast('กรอกชื่อเพจ'); return; }
+  let error;
+  if (id) ({ error } = await sb.from('pages').update(payload).eq('id', id));
+  else ({ error } = await sb.from('pages').insert(payload));
+  if (error) { showToast('บันทึกล้มเหลว'); return; }
+  closeModal('page-modal');
+  await loadAll();
+  renderAdmin();
+  showToast('บันทึกสำเร็จ');
+}
+async function deletePage() {
+  const id = document.getElementById('page-id').value;
+  if (!id) return;
+  const { error } = await sb.from('pages').update({ active: false }).eq('id', id);
+  if (error) { showToast('ลบล้มเหลว'); return; }
+  closeModal('page-modal');
+  await loadAll();
+  renderAdmin();
+  showToast('ปิดใช้งานเพจแล้ว');
+}
+
+// Staff modal
+function openStaffModal(id) {
+  const chipArea = document.getElementById('staff-pages-select');
+  const currentPageIds = id ? staffPages.filter(sp => sp.staff_id === id).map(sp => sp.page_id) : [];
+  chipArea.innerHTML = pages.filter(p => p.active).map(p => `
+    <label><input type="checkbox" value="${p.id}" ${currentPageIds.includes(p.id) ? 'checked' : ''}><span>${escapeHtml(p.name)}</span></label>
+  `).join('');
+
+  document.getElementById('staff-id').value = id || '';
+  document.getElementById('staff-delete-btn').style.display = id ? '' : 'none';
+  if (id) {
+    const s = staff.find(x => x.id === id);
+    document.getElementById('staff-modal-title').textContent = 'แก้ไขพนักงาน';
+    document.getElementById('staff-name').value = s.name;
+    document.getElementById('staff-type').value = s.type;
+    document.getElementById('staff-can-edit').checked = s.can_edit;
+    document.getElementById('staff-pin').value = s.edit_pin || '';
+  } else {
+    document.getElementById('staff-modal-title').textContent = 'เพิ่มพนักงาน';
+    document.getElementById('staff-name').value = '';
+    document.getElementById('staff-type').value = 'freelance';
+    document.getElementById('staff-can-edit').checked = false;
+    document.getElementById('staff-pin').value = '';
+  }
+  openModal('staff-modal');
+}
+async function saveStaff() {
+  const id = document.getElementById('staff-id').value;
+  const payload = {
+    name: document.getElementById('staff-name').value.trim(),
+    type: document.getElementById('staff-type').value,
+    can_edit: document.getElementById('staff-can-edit').checked,
+    edit_pin: document.getElementById('staff-pin').value.trim() || null
+  };
+  if (!payload.name) { showToast('กรอกชื่อพนักงาน'); return; }
+
+  let staffId = id;
+  let error;
+  if (id) {
+    ({ error } = await sb.from('staff').update(payload).eq('id', id));
+  } else {
+    const { data, error: insErr } = await sb.from('staff').insert(payload).select().single();
+    error = insErr;
+    if (data) staffId = data.id;
+  }
+  if (error) { showToast('บันทึกล้มเหลว: ' + error.message); return; }
+
+  const selectedPageIds = Array.from(document.querySelectorAll('#staff-pages-select input:checked')).map(el => el.value);
+  await sb.from('staff_pages').delete().eq('staff_id', staffId);
+  if (selectedPageIds.length) {
+    await sb.from('staff_pages').insert(selectedPageIds.map(pid => ({ staff_id: staffId, page_id: pid })));
+  }
+
+  closeModal('staff-modal');
+  await loadAll();
+  renderAdmin();
+  showToast('บันทึกสำเร็จ');
+}
+async function deleteStaff() {
+  const id = document.getElementById('staff-id').value;
+  if (!id) return;
+  const { error } = await sb.from('staff').update({ active: false }).eq('id', id);
+  if (error) { showToast('ลบล้มเหลว'); return; }
+  closeModal('staff-modal');
+  await loadAll();
+  renderAdmin();
+  showToast('ปิดใช้งานพนักงานแล้ว');
+}
+
+// ---- Realtime ----
+sb.channel('shifthr-changes')
+  .on('postgres_changes', { event: '*', schema: 'public', table: 'shifts' }, () => loadAll())
+  .on('postgres_changes', { event: '*', schema: 'public', table: 'staff' }, () => loadAll())
+  .on('postgres_changes', { event: '*', schema: 'public', table: 'pages' }, () => loadAll())
+  .subscribe();
+
+updateLockBtn();
+loadAll();
+</script>
+</body>
+</html>
