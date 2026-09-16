@@ -6,11 +6,14 @@ create extension if not exists pgcrypto;
 create table if not exists public.pages (
   id uuid primary key default gen_random_uuid(),
   name text not null,
+  supervisor_name text,
   default_start time,
   default_end time,
   default_break_minutes int not null default 0,
   active boolean not null default true
 );
+
+alter table public.pages add column if not exists supervisor_name text;
 
 create table if not exists public.staff (
   id uuid primary key default gen_random_uuid(),
